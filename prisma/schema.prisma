@@ -1,0 +1,146 @@
+
+generator client {
+  provider = "prisma-client-js"
+    binaryTargets = ["windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  tools    Tool[] // Tools submitted by user
+  reviews  Review[] // Reviews written by user
+  upvotes  Upvote[] // Upvotes made by user
+  sessions Session[]
+  accounts Account[]
+
+  @@map("user")
+}
+
+model Tool {
+  id           Int      @id @default(autoincrement())
+  name         String
+  url          String
+  description  String?
+  pricingModel String?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  createdBy String   // FK, required
+  user      User     @relation(fields: [createdBy], references: [id])
+  categoryId Int?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       ToolTags[]
+  reviews    Review[]
+  upvotes    Upvote[]
+}
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  // Relations
+  tools Tool[]
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  // Relations
+  tools ToolTags[]
+}
+
+model ToolTags {
+  tool   Tool @relation(fields: [toolId], references: [id])
+  toolId Int
+
+  tag   Tag @relation(fields: [tagId], references: [id])
+  tagId Int
+
+  // Composite primary key
+  @@id([toolId, tagId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  toolId Int
+  tool   Tool   @relation(fields: [toolId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Upvote {
+  toolId Int
+  tool   Tool @relation(fields: [toolId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // A user can only upvote a tool once
+  @@id([toolId, userId])
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@unique([providerId, accountId])
+  @@map("account")
+}
+
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
